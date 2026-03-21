@@ -10,7 +10,8 @@ export class PostService {
         ? await sql`
             SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
-              (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${userId}) as "likedByMe"
+              (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${userId}) as "likedByMe",
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             WHERE p.title ILIKE ${"%" + search + "%"}
@@ -20,7 +21,8 @@ export class PostService {
         : await sql`
             SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
-              0 as "likedByMe"
+              0 as "likedByMe",
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             WHERE p.title ILIKE ${"%" + search + "%"}
@@ -31,7 +33,8 @@ export class PostService {
         ? await sql`
             SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
-              (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${userId}) as "likedByMe"
+              (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${userId}) as "likedByMe",
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             ORDER BY p."createdAt" DESC
@@ -40,7 +43,8 @@ export class PostService {
         : await sql`
             SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
-              0 as "likedByMe"
+              0 as "likedByMe",
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             ORDER BY p."createdAt" DESC

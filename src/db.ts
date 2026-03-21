@@ -50,6 +50,16 @@ async function initDB() {
       "createdAt" TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      content TEXT NOT NULL,
+      "postId" INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
 }
 
 initDB().catch((err) => {

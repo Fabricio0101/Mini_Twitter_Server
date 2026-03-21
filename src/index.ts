@@ -4,6 +4,7 @@ import { swagger } from "@elysiajs/swagger";
 import { cors } from "@elysiajs/cors";
 import { authRoutes } from "./routes/auth.routes";
 import { postRoutes } from "./routes/post.routes";
+import { commentRoutes } from "./routes/comment.routes";
 import { uploadRoutes } from "./routes/upload.routes";
 import { userRoutes } from "./routes/user.routes";
 
@@ -50,6 +51,7 @@ const app = new Elysia()
   })
   .use(authRoutes)
   .use(postRoutes)
+  .use(commentRoutes)
   .use(uploadRoutes)
   .use(userRoutes)
   .listen(Number(process.env.PORT) || 3000);
