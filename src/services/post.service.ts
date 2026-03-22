@@ -8,10 +8,17 @@ export class PostService {
     const posts = search
       ? userId
         ? await sql`
-            SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            SELECT p.id, p.title, p.content, p.image, p."createdAt",
+              p."authorId",
+              u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${userId}) as "likedByMe",
-              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+              (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+              (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id AND "userId" = ${userId}) as "repostedByMe",
+              (SELECT COUNT(*) FROM favorites WHERE "postId" = p.id AND "userId" = ${userId}) as "favoritedByMe",
+              (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+              CASE WHEN p."authorId" = ${userId}::int THEN true ELSE false END as "isOwner"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             WHERE p.title ILIKE ${"%" + search + "%"}
@@ -19,10 +26,17 @@ export class PostService {
             LIMIT ${limit} OFFSET ${offset}
           `
         : await sql`
-            SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            SELECT p.id, p.title, p.content, p.image, p."createdAt",
+              p."authorId",
+              u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
               0 as "likedByMe",
-              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+              (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+              0 as "repostedByMe",
+              0 as "favoritedByMe",
+              (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+              false as "isOwner"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             WHERE p.title ILIKE ${"%" + search + "%"}
@@ -31,20 +45,34 @@ export class PostService {
           `
       : userId
         ? await sql`
-            SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            SELECT p.id, p.title, p.content, p.image, p."createdAt",
+              p."authorId",
+              u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${userId}) as "likedByMe",
-              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+              (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+              (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id AND "userId" = ${userId}) as "repostedByMe",
+              (SELECT COUNT(*) FROM favorites WHERE "postId" = p.id AND "userId" = ${userId}) as "favoritedByMe",
+              (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+              CASE WHEN p."authorId" = ${userId}::int THEN true ELSE false END as "isOwner"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             ORDER BY p."createdAt" DESC
             LIMIT ${limit} OFFSET ${offset}
           `
         : await sql`
-            SELECT p.*, u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            SELECT p.id, p.title, p.content, p.image, p."createdAt",
+              p."authorId",
+              u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
               (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
               0 as "likedByMe",
-              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount"
+              (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+              (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+              0 as "repostedByMe",
+              0 as "favoritedByMe",
+              (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+              false as "isOwner"
             FROM posts p
             JOIN users u ON p."authorId" = u.id
             ORDER BY p."createdAt" DESC
@@ -56,6 +84,80 @@ export class PostService {
       : await sql`SELECT COUNT(*) as total FROM posts p`;
 
     return { posts, total: Number(total), page: queryPage, limit };
+  }
+
+  static async getUserPosts(targetUserId: number, currentUserId: number | null, page: number = 1, limit: number = 10) {
+    const offset = (page - 1) * limit;
+
+    const posts = currentUserId
+      ? await sql`
+          SELECT p.id, p.title, p.content, p.image, p."createdAt",
+            p."authorId",
+            u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
+            (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${currentUserId}) as "likedByMe",
+            (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+            (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+            (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id AND "userId" = ${currentUserId}) as "repostedByMe",
+            (SELECT COUNT(*) FROM favorites WHERE "postId" = p.id AND "userId" = ${currentUserId}) as "favoritedByMe",
+            (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+            CASE WHEN p."authorId" = ${currentUserId} THEN true ELSE false END as "isOwner",
+            NULL as "repostedBy"
+          FROM posts p
+          JOIN users u ON p."authorId" = u.id
+          WHERE p."authorId" = ${targetUserId}
+
+          UNION ALL
+
+          SELECT p.id, p.title, p.content, p.image, p."createdAt",
+            p."authorId",
+            u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
+            (SELECT COUNT(*) FROM likes WHERE "postId" = p.id AND "userId" = ${currentUserId}) as "likedByMe",
+            (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+            (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+            (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id AND "userId" = ${currentUserId}) as "repostedByMe",
+            (SELECT COUNT(*) FROM favorites WHERE "postId" = p.id AND "userId" = ${currentUserId}) as "favoritedByMe",
+            (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+            CASE WHEN p."authorId" = ${currentUserId} THEN true ELSE false END as "isOwner",
+            ru.name as "repostedBy"
+          FROM reposts r
+          JOIN posts p ON r."postId" = p.id
+          JOIN users u ON p."authorId" = u.id
+          JOIN users ru ON r."userId" = ru.id
+          WHERE r."userId" = ${targetUserId} AND p."authorId" != ${targetUserId}
+
+          ORDER BY "createdAt" DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `
+      : await sql`
+          SELECT p.id, p.title, p.content, p.image, p."createdAt",
+            p."authorId",
+            u.name as "authorName", u."avatarUrl" as "authorAvatarUrl",
+            (SELECT COUNT(*) FROM likes WHERE "postId" = p.id) as "likesCount",
+            0 as "likedByMe",
+            (SELECT COUNT(*) FROM comments WHERE "postId" = p.id) as "commentsCount",
+            (SELECT COUNT(*) FROM reposts WHERE "postId" = p.id) as "repostsCount",
+            0 as "repostedByMe",
+            0 as "favoritedByMe",
+            (SELECT COUNT(*) FROM post_views WHERE "postId" = p.id) as "viewsCount",
+            false as "isOwner",
+            NULL as "repostedBy"
+          FROM posts p
+          JOIN users u ON p."authorId" = u.id
+          WHERE p."authorId" = ${targetUserId}
+          ORDER BY p."createdAt" DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `;
+
+    const [{ total }] = await sql`
+      SELECT (
+        (SELECT COUNT(*) FROM posts WHERE "authorId" = ${targetUserId})
+        + (SELECT COUNT(*) FROM reposts WHERE "userId" = ${targetUserId})
+      ) as total
+    `;
+
+    return { posts, total: Number(total), page, limit };
   }
 
   static async create(title: string, content: string, authorId: string, image?: string) {

@@ -86,6 +86,26 @@ export const chatRoutes = new Elysia()
             detail: { tags: ["Chat"] },
           }
         )
+        .post(
+          "/conversations/:id/messages",
+          async ({ params: { id }, body, jwt, headers: { authorization }, set }) => {
+            const token = authorization!.split(" ")[1];
+            const payload = (await jwt.verify(token)) as any;
+            const userId = Number(payload.sub);
+
+            if (!(await ChatService.isParticipant(id, userId))) {
+              set.status = 403;
+              return { error: "Acesso negado" };
+            }
+
+            return await ChatService.createMessage(id, userId, body.content);
+          },
+          {
+            params: t.Object({ id: t.Numeric() }),
+            body: t.Object({ content: t.String() }),
+            detail: { tags: ["Chat"] },
+          }
+        )
         .put(
           "/conversations/:id/read",
           async ({ params: { id }, jwt, headers: { authorization }, set }) => {

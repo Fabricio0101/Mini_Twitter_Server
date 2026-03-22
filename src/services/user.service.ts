@@ -42,6 +42,23 @@ export class UserService {
     return (user as UserProfile) ?? null;
   }
 
+  static async getPublicProfile(id: number) {
+    const [user] = await sql`
+      SELECT id, name, bio, location, "avatarUrl", "createdAt"
+      FROM users WHERE id = ${id}
+    `;
+    if (!user) return null;
+
+    const [{ count: postsCount }] = await sql`
+      SELECT COUNT(*) as count FROM posts WHERE "authorId" = ${id}
+    `;
+
+    return {
+      ...user,
+      postsCount: Number(postsCount),
+    };
+  }
+
   static async updateProfile(id: number, data: UpdateProfileData) {
     const updateData: Record<string, string> = {};
 

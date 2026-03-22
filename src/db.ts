@@ -96,6 +96,46 @@ async function initDB() {
       "readAt" TIMESTAMPTZ
     )
   `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS reposts (
+      id SERIAL PRIMARY KEY,
+      "postId" INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE("postId", "userId")
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS follows (
+      id SERIAL PRIMARY KEY,
+      "followerId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "followingId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE("followerId", "followingId")
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS favorites (
+      id SERIAL PRIMARY KEY,
+      "postId" INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE("postId", "userId")
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS post_views (
+      id SERIAL PRIMARY KEY,
+      "postId" INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE("postId", "userId")
+    )
+  `;
 }
 
 initDB().catch((err) => {

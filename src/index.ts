@@ -7,6 +7,7 @@ import { commentRoutes } from "./routes/comment.routes";
 import { chatRoutes } from "./routes/chat.routes";
 import { uploadRoutes } from "./routes/upload.routes";
 import { userRoutes } from "./routes/user.routes";
+import { socialRoutes } from "./routes/social.routes";
 import { wsHandler } from "./ws";
 
 const app = new Elysia()
@@ -52,6 +53,7 @@ const app = new Elysia()
   .use(chatRoutes)
   .use(uploadRoutes)
   .use(userRoutes)
+  .use(socialRoutes)
   .use(wsHandler)
   .listen(Number(process.env.PORT) || 3000);
 
