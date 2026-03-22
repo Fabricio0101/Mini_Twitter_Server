@@ -60,6 +60,27 @@ async function initDB() {
       "createdAt" TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id SERIAL PRIMARY KEY,
+      "user1Id" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "user2Id" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "lastMessageAt" TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE("user1Id", "user2Id")
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      "conversationId" INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      "senderId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+      "readAt" TIMESTAMPTZ
+    )
+  `;
 }
 
 initDB().catch((err) => {
