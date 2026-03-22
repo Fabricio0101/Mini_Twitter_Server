@@ -1,10 +1,10 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
-import { cors } from "@elysiajs/cors";
+import { createCors } from "../lib/cors";
 import { CloudinaryService } from "../services/cloudinary";
 
 export const uploadRoutes = new Elysia({ prefix: "/upload" })
-  .use(cors())
+  .use(createCors("upload"))
   .use(
     jwt({
       name: "jwt",
