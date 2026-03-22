@@ -14,13 +14,49 @@ export const commentRoutes = new Elysia()
   )
   .get(
     "/posts/:id/comments",
-    async ({ params: { id }, set }) => {
+    async ({ params: { id }, set, jwt: jwtInstance, headers: { authorization } }) => {
       const post = await PostService.getById(id);
       if (!post) {
         set.status = 404;
         return { error: "Post não encontrado" };
       }
-      return await CommentService.getByPostId(id);
+
+      // Tenta extrair userId do token (opcional para likedByMe)
+      let currentUserId: number | undefined;
+      if (authorization) {
+        try {
+          const token = authorization.split(" ")[1];
+          const payload = await jwtInstance.verify(token) as any;
+          if (payload?.sub) currentUserId = Number(payload.sub);
+        } catch {}
+      }
+
+      return await CommentService.getByPostId(id, currentUserId);
+    },
+    {
+      params: t.Object({ id: t.Numeric() }),
+      detail: { tags: ["Comments"] },
+    }
+  )
+  .get(
+    "/comments/:id/replies",
+    async ({ params: { id }, set, jwt: jwtInstance, headers: { authorization } }) => {
+      const comment = await CommentService.getById(id);
+      if (!comment) {
+        set.status = 404;
+        return { error: "Comentário não encontrado" };
+      }
+
+      let currentUserId: number | undefined;
+      if (authorization) {
+        try {
+          const token = authorization.split(" ")[1];
+          const payload = await jwtInstance.verify(token) as any;
+          if (payload?.sub) currentUserId = Number(payload.sub);
+        } catch {}
+      }
+
+      return await CommentService.getReplies(id, currentUserId);
     },
     {
       params: t.Object({ id: t.Numeric() }),
@@ -63,12 +99,43 @@ export const commentRoutes = new Elysia()
               return { error: "Post não encontrado" };
             }
 
-            const comment = await CommentService.create(id, payload.sub, body.content);
+            // Se parentId fornecido, verificar se o comentário pai existe
+            if (body.parentId) {
+              const parent = await CommentService.getById(body.parentId);
+              if (!parent) {
+                set.status = 404;
+                return { error: "Comentário pai não encontrado" };
+              }
+            }
+
+            const comment = await CommentService.create(id, payload.sub, body.content, body.parentId);
             return comment;
           },
           {
             params: t.Object({ id: t.Numeric() }),
-            body: t.Object({ content: t.String({ minLength: 1 }) }),
+            body: t.Object({
+              content: t.String({ minLength: 1 }),
+              parentId: t.Optional(t.Numeric()),
+            }),
+            detail: { tags: ["Comments"] },
+          }
+        )
+        .post(
+          "/comments/:id/like",
+          async ({ params: { id }, jwt, headers: { authorization }, set }) => {
+            const token = authorization!.split(" ")[1];
+            const payload = (await jwt.verify(token)) as any;
+
+            const comment = await CommentService.getById(id);
+            if (!comment) {
+              set.status = 404;
+              return { error: "Comentário não encontrado" };
+            }
+
+            return await CommentService.toggleLike(id, payload.sub);
+          },
+          {
+            params: t.Object({ id: t.Numeric() }),
             detail: { tags: ["Comments"] },
           }
         )

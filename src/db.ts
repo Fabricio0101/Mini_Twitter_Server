@@ -57,7 +57,22 @@ async function initDB() {
       content TEXT NOT NULL,
       "postId" INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
       "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "parentId" INTEGER REFERENCES comments(id) ON DELETE CASCADE,
       "createdAt" TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+
+  await sql`
+    ALTER TABLE comments ADD COLUMN IF NOT EXISTS "parentId" INTEGER REFERENCES comments(id) ON DELETE CASCADE
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS comment_likes (
+      id SERIAL PRIMARY KEY,
+      "commentId" INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+      "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE("commentId", "userId")
     )
   `;
 
