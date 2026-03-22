@@ -1,10 +1,10 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
-import { corsPlugin } from "../plugins/cors";
+import { cors } from "@elysiajs/cors";
 import { PostService } from "../services/post.service";
 
 export const postRoutes = new Elysia({ prefix: "/posts" })
-  .use(corsPlugin)
+  .use(cors())
   .use(
     jwt({
       name: "jwt",

@@ -1,7 +1,6 @@
 import { Elysia } from "elysia";
 import { jwt } from "@elysiajs/jwt";
 import { swagger } from "@elysiajs/swagger";
-import { corsPlugin } from "./plugins/cors";
 import { authRoutes } from "./routes/auth.routes";
 import { postRoutes } from "./routes/post.routes";
 import { commentRoutes } from "./routes/comment.routes";
@@ -20,7 +19,6 @@ const app = new Elysia()
       }
     }
   }))
-  .use(corsPlugin)
   .use(
     jwt({
       name: "jwt",
