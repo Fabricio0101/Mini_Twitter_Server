@@ -1,10 +1,8 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
-import { cors } from "@elysiajs/cors";
 import { ChatService } from "../services/chat.service";
 
 export const chatRoutes = new Elysia()
-  .use(cors())
   .use(
     jwt({
       name: "jwt",
@@ -13,9 +11,7 @@ export const chatRoutes = new Elysia()
   )
   .guard(
     {
-      async beforeHandle({ jwt, set, headers: { authorization }, request }) {
-        if (request.method === "OPTIONS") return;
-
+      async beforeHandle({ jwt, set, headers: { authorization } }) {
         if (!authorization) {
           set.status = 401;
           return { error: "Não autorizado: Token não fornecido" };

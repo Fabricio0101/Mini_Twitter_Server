@@ -1,7 +1,6 @@
 import { Elysia } from "elysia";
 import { jwt } from "@elysiajs/jwt";
 import { swagger } from "@elysiajs/swagger";
-import { cors } from "@elysiajs/cors";
 import { authRoutes } from "./routes/auth.routes";
 import { postRoutes } from "./routes/post.routes";
 import { commentRoutes } from "./routes/comment.routes";
@@ -10,7 +9,13 @@ import { uploadRoutes } from "./routes/upload.routes";
 import { userRoutes } from "./routes/user.routes";
 import { wsHandler } from "./ws";
 
-const app = new Elysia()
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const elysia = new Elysia()
   .use(swagger({
     documentation: {
       info: {
@@ -20,22 +25,18 @@ const app = new Elysia()
       }
     }
   }))
-  .use(cors())
   .use(
     jwt({
       name: "jwt",
       secret: process.env.JWT_SECRET || "super-secret-key",
     })
   )
-  // Tratamento de Erros Customizado
   .onError(({ code, error, set }) => {
     if (code === 'VALIDATION') {
       set.status = 400;
       return {
         error: "Erro de validação",
         message: "Os dados enviados são inválidos ou estão incompletos.",
-        // Em desenvolvimento você pode querer ver o detalhe, mas para o front-end moderno
-        // uma mensagem amigável é melhor.
         details: error.all.map(e => ({
           field: e.path.substring(1),
           message: e.message
@@ -57,9 +58,34 @@ const app = new Elysia()
   .use(chatRoutes)
   .use(uploadRoutes)
   .use(userRoutes)
-  .use(wsHandler)
-  .listen(Number(process.env.PORT) || 3000);
+  .use(wsHandler);
 
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+const port = Number(process.env.PORT) || 3000;
+
+const server = Bun.serve({
+  port,
+  websocket: elysia.websocket,
+  async fetch(req, server) {
+    // CORS preflight
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // Let Elysia handle routing (including WS upgrades)
+    const response = await elysia.handle(req);
+
+    // Clone response with CORS headers
+    const headers = new Headers(response.headers);
+    for (const [k, v] of Object.entries(corsHeaders)) {
+      headers.set(k, v);
+    }
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  },
+});
+
+console.log(`🦊 Elysia is running at http://localhost:${port}`);
