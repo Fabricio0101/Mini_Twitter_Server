@@ -13,7 +13,9 @@ export const chatRoutes = new Elysia()
   )
   .guard(
     {
-      async beforeHandle({ jwt, set, headers: { authorization } }) {
+      async beforeHandle({ jwt, set, headers: { authorization }, request }) {
+        if (request.method === "OPTIONS") return;
+
         if (!authorization) {
           set.status = 401;
           return { error: "Não autorizado: Token não fornecido" };
