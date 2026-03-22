@@ -1,8 +1,10 @@
 import { Elysia, t } from "elysia";
 import { jwt } from "@elysiajs/jwt";
+import { corsPlugin } from "../plugins/cors";
 import { ChatService } from "../services/chat.service";
 
 export const chatRoutes = new Elysia()
+  .use(corsPlugin)
   .use(
     jwt({
       name: "jwt",

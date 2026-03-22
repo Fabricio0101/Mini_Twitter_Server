@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { jwt } from "@elysiajs/jwt";
 import { swagger } from "@elysiajs/swagger";
+import { corsPlugin } from "./plugins/cors";
 import { authRoutes } from "./routes/auth.routes";
 import { postRoutes } from "./routes/post.routes";
 import { commentRoutes } from "./routes/comment.routes";
@@ -9,13 +10,7 @@ import { uploadRoutes } from "./routes/upload.routes";
 import { userRoutes } from "./routes/user.routes";
 import { wsHandler } from "./ws";
 
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-const elysia = new Elysia()
+const app = new Elysia()
   .use(swagger({
     documentation: {
       info: {
@@ -25,6 +20,7 @@ const elysia = new Elysia()
       }
     }
   }))
+  .use(corsPlugin)
   .use(
     jwt({
       name: "jwt",
@@ -58,34 +54,9 @@ const elysia = new Elysia()
   .use(chatRoutes)
   .use(uploadRoutes)
   .use(userRoutes)
-  .use(wsHandler);
+  .use(wsHandler)
+  .listen(Number(process.env.PORT) || 3000);
 
-const port = Number(process.env.PORT) || 3000;
-
-const server = Bun.serve({
-  port,
-  websocket: elysia.websocket,
-  async fetch(req, server) {
-    // CORS preflight
-    if (req.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders });
-    }
-
-    // Let Elysia handle routing (including WS upgrades)
-    const response = await elysia.handle(req);
-
-    // Clone response with CORS headers
-    const headers = new Headers(response.headers);
-    for (const [k, v] of Object.entries(corsHeaders)) {
-      headers.set(k, v);
-    }
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
-  },
-});
-
-console.log(`🦊 Elysia is running at http://localhost:${port}`);
+console.log(
+  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
+);
